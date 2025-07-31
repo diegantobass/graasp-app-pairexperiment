@@ -314,56 +314,63 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
   return (
     <Stack
       display="flex"
-      direction="column"
+      direction="row"
       height={isFullscreen ? '100vh' : '650px'}
       data-cy={REPL_CONTAINER_CY}
       spacing={1}
       p={2}
     >
-      <ReplToolbar
-        savedStatus={savedStatus}
-        onRunCode={onClickRunCode}
-        onStopCode={onClickStopCode}
-        onClearOutput={onClickClearOutput}
-        onSaveCode={onClickSaveCode}
-        onFullscreen={toggleFullscreen}
-        status={replStatus}
-        isFullscreen={isFullscreen}
-      />
-      <Stack flex={1} direction="row" spacing={1} overflow="hidden">
-        <OutlineWrapper
-          flex={1}
-          overflow="hidden"
-          onKeyDown={handleEditorKeyDown}
-          minHeight="350px"
-        >
-          <CodeEditor
-            id={REPL_EDITOR_ID_CY}
-            value={value}
-            setValue={setValue}
-            languageSupport={[PYTHON]}
-          />
-        </OutlineWrapper>
-        <Stack
-          display="flex"
-          flex={1}
-          direction="column"
-          spacing={1}
-          overflow="hidden"
-        >
-          <OutlineWrapper display="flex" flex={1} p={1} minHeight="350px">
-            <OutputConsole output={output} />
-            <NoobInput
-              prompt={prompt}
-              isWaitingForInput={isWaitingForInput}
-              onValidate={onClickValidateInput}
-              onCancel={onClickCancel}
+      <Stack flex={1} direction="column" spacing={1} overflow="hidden">
+        <ReplToolbar
+          savedStatus={savedStatus}
+          onRunCode={onClickRunCode}
+          onStopCode={onClickStopCode}
+          onClearOutput={onClickClearOutput}
+          onSaveCode={onClickSaveCode}
+          onFullscreen={toggleFullscreen}
+          status={replStatus}
+          isFullscreen={isFullscreen}
+        />
+        <Stack flex={1} direction="row" spacing={1} overflow="hidden">
+          <OutlineWrapper
+            flex={1}
+            overflow="hidden"
+            onKeyDown={handleEditorKeyDown}
+            minHeight="350px"
+          >
+            <CodeEditor
+              id={REPL_EDITOR_ID_CY}
+              value={value}
+              setValue={setValue}
+              languageSupport={[PYTHON]}
             />
           </OutlineWrapper>
+          <Stack
+            display="flex"
+            flex={1}
+            direction="column"
+            spacing={1}
+            overflow="hidden"
+          >
+            <OutlineWrapper display="flex" flex={1} p={1} minHeight="350px">
+              <OutputConsole output={output} />
+              <NoobInput
+                prompt={prompt}
+                isWaitingForInput={isWaitingForInput}
+                onValidate={onClickValidateInput}
+                onCancel={onClickCancel}
+              />
+            </OutlineWrapper>
+          </Stack>
+          {error && <Alert color="error">{error}</Alert>}
         </Stack>
-        {error && <Alert color="error">{error}</Alert>}
+        <Stack direction="row">
+          <OutlineWrapper flex={1}>
+            <ShowFigures figures={figures} />
+          </OutlineWrapper>
+        </Stack>
       </Stack>
-      <Stack direction="row">
+      <Stack direction="row" width={isFullscreen ? '100vh' : '400px'}>
         <OutlineWrapper flex={1}>
           <ShowFigures figures={figures} />
         </OutlineWrapper>
