@@ -15,7 +15,7 @@ import {
   DATA_FILE_LIST_SETTINGS_NAME,
 } from '../../config/appSettingsTypes';
 import { mutations } from '../../config/queryClient';
-import { REPL_CONTAINER_CY, REPL_EDITOR_ID_CY } from '../../config/selectors';
+import { CHATBOT_PROMPT_CONTAINER_CY, REPL_CONTAINER_CY, REPL_EDITOR_ID_CY, SETTING_CHATBOT_INITIAL_PROMPT_DISPLAY_CY } from '../../config/selectors';
 import {
   DEFAULT_CODE_EXECUTION_SETTINGS,
   DEFAULT_DATA_FILE_LIST_SETTINGS,
@@ -33,6 +33,10 @@ import NoobInput from './NoobInput';
 import OutputConsole from './OutputConsole';
 import ReplToolbar from './ReplToolbar';
 import ShowFigures from './ShowFigures';
+import ChatbotAvatar from '../chatbot/ChatbotAvatar';
+import { ChatBubbleOutline } from '@mui/icons-material';
+import { ReviewProvider } from '../context/ReviewContext';
+import CodeReview from '../codeReview/CodeReview';
 
 const OutlineWrapper = styled(Box)(({ theme }) =>
   theme.unstable_sx({
@@ -370,10 +374,13 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
           </OutlineWrapper>
         </Stack>
       </Stack>
-      <Stack direction="row" width={isFullscreen ? '100vh' : '400px'}>
-        <OutlineWrapper flex={1}>
-          <ShowFigures figures={figures} />
-        </OutlineWrapper>
+      <Stack
+        direction="row"
+        width={isFullscreen ? '100vh' : '400px'}
+        overflow="auto">
+        <CodeReview
+        code={value}
+        />
       </Stack>
     </Stack>
   );

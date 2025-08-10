@@ -34,6 +34,7 @@ import ResponseContainer from '../layout/ResponseContainer';
 import Comment from './Comment';
 import CommentEditor from './CommentEditor';
 import ResponseBox from './ResponseBox';
+import { useCodeContext } from '../context/CodeProvider';
 
 type Props = {
   children?: CommentType[];
@@ -53,6 +54,7 @@ const CommentThread = ({
     closeEditingComment,
   } = useReviewContext();
   const { patchAppData, postAppDataAsync } = useAppDataContext();
+  const { code } = useCodeContext();
   const { mutate: postAction } = mutations.usePostAppAction();
   const {
     [GENERAL_SETTINGS_NAME]: generalSettings = DEFAULT_GENERAL_SETTINGS,
@@ -189,7 +191,7 @@ const CommentThread = ({
                             const prompt = buildPrompt(
                               promptSetting?.data.initialPrompt,
                               chatbotThread,
-                              content,
+                              `${content}${code}`,
                             );
 
                             const newData = {

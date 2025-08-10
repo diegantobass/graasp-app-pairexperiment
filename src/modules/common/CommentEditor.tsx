@@ -94,12 +94,12 @@ const CommentEditor: FC<Props> = ({
 
   const multiline = comment?.data.multiline ?? multilineRange;
 
-  // focus textarea on mount
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.focus();
-    }
-  });
+  // // focus textarea on mount
+  // useEffect(() => {
+  //   if (ref.current) {
+  //     ref.current.focus();
+  //   }
+  // });
 
   const handleTextChange = ({
     target: { value },
