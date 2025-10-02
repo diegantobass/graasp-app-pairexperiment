@@ -16,12 +16,12 @@ type Props = {
 const CodeReview = ({ setView, isPreset, code }: Props): JSX.Element => (
   <ReviewProvider>
     <CodeProvider code={code}>
-    <VisibilityProvider>
-      <CodeReviewContainer data-cy={CODE_REVIEW_CONTAINER_CYPRESS}>
-        <CodeReviewToolbar setView={setView} />
-        <CodeReviewBody isPreset={isPreset} />
-      </CodeReviewContainer>
-    </VisibilityProvider>
+      <VisibilityProvider>
+        <CodeReviewContainer data-cy={CODE_REVIEW_CONTAINER_CYPRESS}>
+          <CodeReviewToolbar setView={setView} />
+          <CodeReviewBody isPreset={isPreset} />
+        </CodeReviewContainer>
+      </VisibilityProvider>
     </CodeProvider>
   </ReviewProvider>
 );

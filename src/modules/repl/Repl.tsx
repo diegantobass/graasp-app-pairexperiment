@@ -1,11 +1,14 @@
-import { KeyboardEvent, useContext, useEffect, useState } from 'react';
+import { KeyboardEvent, useContext, useEffect, useRef, useState } from 'react';
 
-import { Alert, Box, Stack, styled } from '@mui/material';
+import { ChatBubbleOutline, Height } from '@mui/icons-material';
+import { Alert, Box, Button, Stack, TextField, styled } from '@mui/material';
 
 import { Api, TokenContext, useLocalContext } from '@graasp/apps-query-client';
 import { PyWorker, PyodideStatus } from '@graasp/pyodide';
+import { ChatbotRole } from '@graasp/sdk';
 import { useFullscreen } from '@graasp/ui/apps';
 
+import { CHAT_BOT_ERROR_MESSAGE, INSTRUCTOR_CODE_ID } from '@/config/constants';
 import { PYTHON } from '@/config/programmingLanguages';
 
 import { APP_ACTIONS_TYPES } from '../../config/appActionsTypes';
@@ -15,7 +18,12 @@ import {
   DATA_FILE_LIST_SETTINGS_NAME,
 } from '../../config/appSettingsTypes';
 import { mutations } from '../../config/queryClient';
-import { CHATBOT_PROMPT_CONTAINER_CY, REPL_CONTAINER_CY, REPL_EDITOR_ID_CY, SETTING_CHATBOT_INITIAL_PROMPT_DISPLAY_CY } from '../../config/selectors';
+import {
+  CHATBOT_PROMPT_CONTAINER_CY,
+  REPL_CONTAINER_CY,
+  REPL_EDITOR_ID_CY,
+  SETTING_CHATBOT_INITIAL_PROMPT_DISPLAY_CY,
+} from '../../config/selectors';
 import {
   DEFAULT_CODE_EXECUTION_SETTINGS,
   DEFAULT_DATA_FILE_LIST_SETTINGS,
@@ -26,17 +34,17 @@ import {
   DataFileListSettingsKeys,
 } from '../../interfaces/settings';
 import { sortAppDataFromNewest } from '../../utils/utils';
+import ChatbotAvatar from '../chatbot/ChatbotAvatar';
+import ChatbotPrompts from '../chatbot/ChatbotPrompts';
+import CodeReview from '../codeReview/CodeReview';
 import { useAppDataContext } from '../context/AppDataContext';
+import { ReviewProvider } from '../context/ReviewContext';
 import { useSettings } from '../context/SettingsContext';
 import CodeEditor from './CodeEditor';
 import NoobInput from './NoobInput';
 import OutputConsole from './OutputConsole';
 import ReplToolbar from './ReplToolbar';
 import ShowFigures from './ShowFigures';
-import ChatbotAvatar from '../chatbot/ChatbotAvatar';
-import { ChatBubbleOutline } from '@mui/icons-material';
-import { ReviewProvider } from '../context/ReviewContext';
-import CodeReview from '../codeReview/CodeReview';
 
 const OutlineWrapper = styled(Box)(({ theme }) =>
   theme.unstable_sx({
@@ -56,6 +64,9 @@ type Props = {
 };
 
 const Repl = ({ seedValue }: Props): JSX.Element => {
+  const messageContainerRef = useRef<HTMLDivElement>(null);
+  const { mutateAsync: postChatBot } = mutations.usePostChatBot();
+  const { postAppDataAsync, comments } = useAppDataContext();
   const [worker, setWorker] = useState<PyWorker | null>(null);
   const [output, setOutput] = useState<string>('');
   const [prompt, setPrompt] = useState<string>('');
@@ -218,7 +229,73 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
     [worker, dataFilesReady, reloadDataFiles],
   );
 
-  const onClickRunCode = (): void => {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('HELLO');
+      const fullCode = `${value}`;
+      if (fullCode.trim() == '') {
+        return;
+      }
+      const prompt = [
+        {
+          role: ChatbotRole.System,
+          content: `What do you think about this code? If you think the code is working, answer only with "no" ${fullCode}`,
+        },
+      ];
+      const actionData = {
+        line: 0,
+        parent: null,
+        codeId: INSTRUCTOR_CODE_ID,
+        content: CHAT_BOT_ERROR_MESSAGE,
+      };
+      postChatBot(prompt).then(async (chatBotRes) => {
+        postAction({
+          data: chatBotRes,
+          type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
+        });
+        if (chatBotRes.completion.toLowerCase() !== 'no') {
+          actionData.content = chatBotRes.completion;
+          await postAppDataAsync({
+            data: actionData,
+            type: APP_DATA_TYPES.BOT_COMMENT,
+          });
+          postAction({
+            data: actionData,
+            type: APP_ACTIONS_TYPES.CREATE_COMMENT,
+          });
+        }
+        messageContainerRef.current?.scrollTo({
+          top: messageContainerRef.current?.scrollHeight,
+        });
+      });
+    }, 10000);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
+  // const onClickRunCode = (): void => {
+  //   // to run the code:
+  //   // - previous run must be done
+  //   // - worker must be set
+  //   // - value must be true
+  //   if (!isExecuting && worker) {
+  //     const headerCode = codeExecSettings[CodeExecutionSettingsKeys.HeaderCode];
+  //     const footerCode = codeExecSettings[CodeExecutionSettingsKeys.FooterCode];
+  //     const fullCode = `${headerCode}\n${value}\n${footerCode}`;
+  //     if (fullCode.trim()) {
+  //       setIsExecuting(true);
+  //       // reset output
+  //       worker.clearOutput();
+  //       setOutput('');
+  //       worker.run(fullCode);
+  //       // post that code was run
+  //       postAction({ type: APP_ACTIONS_TYPES.RUN_CODE, data: { code: value } });
+  //     }
+  //   }
+  // };
+
+  const onClickMaxiRunCode = (): void => {
     // to run the code:
     // - previous run must be done
     // - worker must be set
@@ -232,9 +309,38 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
         // reset output
         worker.clearOutput();
         setOutput('');
+        // ADD CHATBOT PROMPTING HERE
         worker.run(fullCode);
         // post that code was run
-        postAction({ type: APP_ACTIONS_TYPES.RUN_CODE, data: { code: value } });
+        const prompt = [
+          {
+            role: ChatbotRole.System,
+            content: `What do you think about this code? If you think the code is working, answer only with "no" ${fullCode}`,
+          },
+        ];
+        const actionData = {
+          line: 0,
+          parent: null,
+          codeId: INSTRUCTOR_CODE_ID,
+          content: CHAT_BOT_ERROR_MESSAGE,
+        };
+        postChatBot(prompt).then((chatBotRes) => {
+          postAction({
+            data: chatBotRes,
+            type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
+          });
+          if (chatBotRes.completion.toLowerCase() !== 'no') {
+            actionData.content = chatBotRes.completion;
+            postAppDataAsync({
+              data: actionData,
+              type: APP_DATA_TYPES.BOT_COMMENT,
+            });
+            postAction({
+              data: actionData,
+              type: APP_ACTIONS_TYPES.CREATE_COMMENT,
+            });
+          }
+        });
       }
     }
   };
@@ -307,7 +413,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
     if (event.ctrlKey && event.key === 'Enter') {
       event.preventDefault();
       (document.activeElement as HTMLDivElement)?.blur();
-      onClickRunCode();
+      onClickMaxiRunCode();
     }
 
     if (event.ctrlKey && event.key === 's') {
@@ -315,6 +421,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
       onClickSaveCode();
     }
   };
+
   return (
     <Stack
       display="flex"
@@ -327,7 +434,8 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
       <Stack flex={1} direction="column" spacing={1} overflow="hidden">
         <ReplToolbar
           savedStatus={savedStatus}
-          onRunCode={onClickRunCode}
+          // onRunCode={onClickRunCode}
+          onMaxiRunCode={onClickMaxiRunCode}
           onStopCode={onClickStopCode}
           onClearOutput={onClickClearOutput}
           onSaveCode={onClickSaveCode}
@@ -335,9 +443,9 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
           status={replStatus}
           isFullscreen={isFullscreen}
         />
-        <Stack flex={1} direction="row" spacing={1} overflow="hidden">
+        <Stack flex={1} direction="column" spacing={1} overflow="hidden">
           <OutlineWrapper
-            flex={1}
+            flex={2}
             overflow="hidden"
             onKeyDown={handleEditorKeyDown}
             minHeight="350px"
@@ -356,7 +464,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
             spacing={1}
             overflow="hidden"
           >
-            <OutlineWrapper display="flex" flex={1} p={1} minHeight="350px">
+            <OutlineWrapper display="flex" flex={1} p={1}>
               <OutputConsole output={output} />
               <NoobInput
                 prompt={prompt}
@@ -368,20 +476,18 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
           </Stack>
           {error && <Alert color="error">{error}</Alert>}
         </Stack>
-        <Stack direction="row">
-          <OutlineWrapper flex={1}>
-            <ShowFigures figures={figures} />
-          </OutlineWrapper>
-        </Stack>
       </Stack>
       <Stack
+        ref={messageContainerRef}
         direction="row"
         width={isFullscreen ? '100vh' : '400px'}
-        overflow="auto">
-        <CodeReview
-        code={value}
-        />
+        overflow="auto"
+      >
+        <CodeReview code={value} />
       </Stack>
+      {/* <Stack>
+      <Button code={value} onSend="">LALALA</Button>
+      </Stack> */}
     </Stack>
   );
 };

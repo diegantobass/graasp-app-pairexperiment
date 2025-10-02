@@ -21,12 +21,14 @@ import {
   REPL_SAVE_BUTTON_CY,
   REPL_STOP_BUTTON_CY,
 } from '../../config/selectors';
+import MaxiButton from '../layout/MaxiButton';
 import MiniAlert from '../layout/MiniAlert';
 import MiniButton from '../layout/MiniButton';
 import ReplStatusIndicator from './ReplStatusIndicator';
 
 type Props = {
-  onRunCode: () => void;
+  // onRunCode: () => void;
+  onMaxiRunCode: () => void;
   onStopCode: () => void;
   onClearOutput: () => void;
   onSaveCode: () => void;
@@ -37,7 +39,8 @@ type Props = {
 };
 
 const ReplToolbar: FC<Props> = ({
-  onRunCode,
+  // onRunCode,
+  onMaxiRunCode,
   onStopCode,
   onClearOutput,
   onSaveCode,
@@ -76,7 +79,7 @@ const ReplToolbar: FC<Props> = ({
             tooltip={t('Save Code')}
             text={savedStatus ? t('Saved') : t('Save')}
           />
-          <MiniButton
+          {/* <MiniButton
             dataCy={REPL_RUN_CODE_BUTTON_CY}
             isLoading={isLoading}
             disabled={isRunning}
@@ -84,6 +87,15 @@ const ReplToolbar: FC<Props> = ({
             onClick={onRunCode}
             text={t('Run')}
             tooltip={t('Run Code')}
+          /> */}
+          <MaxiButton
+            dataCy={REPL_RUN_CODE_BUTTON_CY}
+            isLoading={isLoading}
+            disabled={isRunning}
+            icon={<PlayArrow />}
+            onClick={onMaxiRunCode}
+            text="Run"
+            tooltip="Code"
           />
         </Stack>
       </Stack>
@@ -109,7 +121,7 @@ const ReplToolbar: FC<Props> = ({
             icon={isFullscreen ? <FullscreenExit /> : <Fullscreen />}
             onClick={onFullscreen}
             tooltip={t('Toggle Fullscreen')}
-            text={t('Fullscreen')}
+            text=""
           />
           <MiniButton
             dataCy={REPL_CLEAR_BUTTON_CY}

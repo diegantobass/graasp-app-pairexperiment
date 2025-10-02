@@ -15,14 +15,13 @@ type CodeContextType = {
   code: string;
 };
 // eslint-disable-next-line @typescript-eslint/ban-types
-type Prop = {code: string};
+type Prop = { code: string };
 
 const defaultContextValue: CodeContextType = {
-  code: "",
+  code: '',
 };
 
-const CodeContext =
-  createContext<CodeContextType>(defaultContextValue);
+const CodeContext = createContext<CodeContextType>(defaultContextValue);
 
 export const CodeProvider: FC<PropsWithChildren<Prop>> = ({
   children,
@@ -30,12 +29,10 @@ export const CodeProvider: FC<PropsWithChildren<Prop>> = ({
 }) => {
   // todo: add code from codeVersions and compute the number of lines
 
-  const contextValue = {code};
+  const contextValue = { code };
 
   return (
-    <CodeContext.Provider value={contextValue}>
-      {children}
-    </CodeContext.Provider>
+    <CodeContext.Provider value={contextValue}>{children}</CodeContext.Provider>
   );
 };
 

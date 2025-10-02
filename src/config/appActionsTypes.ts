@@ -17,4 +17,5 @@ export enum APP_ACTIONS_TYPES {
   REPORT_COMMENT = 'report_comment',
   DELETE_COMMENT = 'delete_comment',
   RESPOND_COMMENT = 'respond_comment',
+  BOT_RUNFEEDBACK = 'BOT_RUNFEEDBACK',
 }
