@@ -1,0 +1,11 @@
+build
+public
+coverage
+src/serviceWorker.js
+
+node_modules
+.yarn/.cache
+.husky
+.nyc_output
+.yarn
+commitlint.config.js

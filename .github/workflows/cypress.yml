@@ -1,0 +1,67 @@
+name: Cypress
+
+on:
+  merge_group:
+  push:
+
+jobs:
+  cypress-run:
+    concurrency:
+      group: cypress-${{ github.head_ref || github.ref }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: set up node
+        uses: volta-cli/action@v4
+
+      - name: Yarn Install and Cache
+        uses: graasp/graasp-deploy/.github/actions/yarn-install-and-cache@v1
+        with:
+          cypress: true
+
+      - name: cypress run
+        uses: cypress-io/github-action@v6
+        env:
+          VITE_PORT: 3000
+          VITE_API_HOST: http://localhost:3636
+          VITE_GRAASP_APP_KEY: id-1234567890
+          VITE_MOCK_API: true
+          VITE_VERSION: cypress-tests
+        with:
+          install: false
+          build: yarn build:test
+          config: baseUrl=http://localhost:3000
+          start: yarn preview:test
+          browser: chrome
+          quiet: true
+          # point to new cypress@10 config file
+          config-file: cypress.config.ts
+
+      # component tests are not running ok in the CI
+      # - name: Run Component tests 🧪
+      #   uses: cypress-io/github-action@v4
+      #   with:
+      #     # we have already installed everything
+      #     install: false
+      #     # to run component tests we need to use "component: true"
+      #     component: true
+
+      # after the test run completes
+      # store videos and any screenshots
+      # NOTE: screenshots will be generated only if E2E test failed
+      # thus we store screenshots only on failures
+      # Alternative: create and commit an empty cypress/screenshots folder
+      # to always have something to upload
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-videos
+          path: cypress/videos
