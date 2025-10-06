@@ -8,7 +8,7 @@
     "Basile Spaenlehauer",
     "Kim Lan Phan Hoang"
   ],
-  "homepage": ".",
+  "homepage": "https://diegantobass.github.io/graasp-app-pairexperiment",
   "type": "module",
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.2",
@@ -87,7 +87,9 @@
     "cypress:open": "env-cmd -f ./.env.test cypress open",
     "test": "yarn build:test && concurrently -k -s first \"yarn preview:test\" \"yarn test:ci\"",
     "test:ci": "env-cmd -f ./.env.test cypress run && nyc report --reporter=text --reporter=text-summary",
-    "cov:report": "open ./coverage/lcov-report/index.html"
+    "cov:report": "open ./coverage/lcov-report/index.html",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "devDependencies": {
     "@commitlint/cli": "19.3.0",
