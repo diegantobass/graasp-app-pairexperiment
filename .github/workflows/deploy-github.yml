@@ -35,7 +35,7 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           VITE_VERSION: github-${{ github.sha }}
           # add any env variable needed by your app here
-        run: yarn build
+        run: corepack enable && yarn build
         shell: bash
 
       - name: Upload artifact
