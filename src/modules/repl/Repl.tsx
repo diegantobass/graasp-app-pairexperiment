@@ -315,7 +315,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
         const prompt = [
           {
             role: ChatbotRole.System,
-            content: `What do you think about this code? If you think the code is working, answer only with "no" ${fullCode}`,
+            content: `What do you think about the code? If you think the code is working, answer only with "no" ${fullCode}`,
           },
         ];
         const actionData = {
