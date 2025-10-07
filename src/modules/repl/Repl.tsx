@@ -225,7 +225,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
   );
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setTimeout(() => {
       const fullCode = `${value}`;
 
       if (value.trim() !== '') {
@@ -264,7 +264,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
       }
     }, 10000);
     return () => {
-      clearInterval(interval);
+      clearTimeout(interval);
     };
   }, [value]);
 
