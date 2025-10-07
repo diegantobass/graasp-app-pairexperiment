@@ -1,7 +1,6 @@
 import { KeyboardEvent, useContext, useEffect, useRef, useState } from 'react';
 
-import { ChatBubbleOutline, Height } from '@mui/icons-material';
-import { Alert, Box, Button, Stack, TextField, styled } from '@mui/material';
+import { Alert, Box, Stack, styled } from '@mui/material';
 
 import { Api, TokenContext, useLocalContext } from '@graasp/apps-query-client';
 import { PyWorker, PyodideStatus } from '@graasp/pyodide';
@@ -14,37 +13,30 @@ import { PYTHON } from '@/config/programmingLanguages';
 import { APP_ACTIONS_TYPES } from '../../config/appActionsTypes';
 import { APP_DATA_TYPES } from '../../config/appDataTypes';
 import {
+  CHATBOT_PROMPT_SETTINGS_NAME,
   CODE_EXECUTION_SETTINGS_NAME,
   DATA_FILE_LIST_SETTINGS_NAME,
 } from '../../config/appSettingsTypes';
-import { mutations } from '../../config/queryClient';
-import {
-  CHATBOT_PROMPT_CONTAINER_CY,
-  REPL_CONTAINER_CY,
-  REPL_EDITOR_ID_CY,
-  SETTING_CHATBOT_INITIAL_PROMPT_DISPLAY_CY,
-} from '../../config/selectors';
+import { hooks, mutations } from '../../config/queryClient';
+import { REPL_CONTAINER_CY, REPL_EDITOR_ID_CY } from '../../config/selectors';
 import {
   DEFAULT_CODE_EXECUTION_SETTINGS,
   DEFAULT_DATA_FILE_LIST_SETTINGS,
 } from '../../config/settings';
 import { CodeVersionType } from '../../interfaces/codeVersions';
 import {
+  ChatbotPromptSettings,
   CodeExecutionSettingsKeys,
   DataFileListSettingsKeys,
 } from '../../interfaces/settings';
 import { sortAppDataFromNewest } from '../../utils/utils';
-import ChatbotAvatar from '../chatbot/ChatbotAvatar';
-import ChatbotPrompts from '../chatbot/ChatbotPrompts';
 import CodeReview from '../codeReview/CodeReview';
 import { useAppDataContext } from '../context/AppDataContext';
-import { ReviewProvider } from '../context/ReviewContext';
 import { useSettings } from '../context/SettingsContext';
 import CodeEditor from './CodeEditor';
 import NoobInput from './NoobInput';
 import OutputConsole from './OutputConsole';
 import ReplToolbar from './ReplToolbar';
-import ShowFigures from './ShowFigures';
 
 const OutlineWrapper = styled(Box)(({ theme }) =>
   theme.unstable_sx({
@@ -101,6 +93,9 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
       dataFileListSetting = DEFAULT_DATA_FILE_LIST_SETTINGS,
     dataFileSettings,
   } = useSettings();
+  const { data: chatbotPrompts } = hooks.useAppSettings<ChatbotPromptSettings>({
+    name: CHATBOT_PROMPT_SETTINGS_NAME,
+  });
 
   const [isExecuting, setIsExecuting] = useState(false);
   const [isWaitingForInput, setIsWaitingForInput] = useState(false);
@@ -231,46 +226,47 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const footerCode = codeExecSettings[CodeExecutionSettingsKeys.FooterCode];
-      const fullCode = `${value}\n${footerCode}`;
-      console.log('scrolled');
-      const prompt = [
-        {
-          role: ChatbotRole.System,
-          content: `What do you think about this code? If you think the code is working, answer only with "no" ${fullCode}`,
-        },
-      ];
-      const actionData = {
-        line: 0,
-        parent: null,
-        codeId: INSTRUCTOR_CODE_ID,
-        content: CHAT_BOT_ERROR_MESSAGE,
-      };
-      postChatBot(prompt).then(async (chatBotRes) => {
-        postAction({
-          data: chatBotRes,
-          type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
-        });
-        if (chatBotRes.completion.toLowerCase() !== 'no') {
-          actionData.content = chatBotRes.completion;
-          await postAppDataAsync({
-            data: actionData,
-            type: APP_DATA_TYPES.BOT_COMMENT,
-          });
+      const fullCode = `${value}`;
+
+      if (value.trim() !== '') {
+        const autoPrompt = [
+          {
+            role: ChatbotRole.System,
+            content: `${chatbotPrompts?.[0].data.initialPrompt}\n\n ${fullCode}`,
+          },
+        ];
+        const actionData = {
+          line: 0,
+          parent: null,
+          codeId: INSTRUCTOR_CODE_ID,
+          content: CHAT_BOT_ERROR_MESSAGE,
+        };
+        postChatBot(autoPrompt).then(async (chatBotRes) => {
           postAction({
-            data: actionData,
-            type: APP_ACTIONS_TYPES.CREATE_COMMENT,
+            data: chatBotRes,
+            type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
           });
-        }
-        messageContainerRef.current?.scrollTo({
-          top: messageContainerRef.current?.scrollHeight,
+          if (chatBotRes.completion.toLowerCase() !== 'no') {
+            actionData.content = `AUTO ${chatBotRes.completion}`;
+            await postAppDataAsync({
+              data: actionData,
+              type: APP_DATA_TYPES.BOT_COMMENT,
+            });
+            postAction({
+              data: actionData,
+              type: APP_ACTIONS_TYPES.CREATE_COMMENT,
+            });
+          }
+          messageContainerRef.current?.scrollTo({
+            top: messageContainerRef.current?.scrollHeight,
+          });
         });
-      });
+      }
     }, 10000);
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [value]);
 
   // const onClickRunCode = (): void => {
   //   // to run the code:
@@ -313,7 +309,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
         const prompt = [
           {
             role: ChatbotRole.System,
-            content: `What do you think about the code? If you think the code is working, answer only with "no" ${fullCode}`,
+            content: `${chatbotPrompts?.[0].data.initialPrompt}\n\n ${fullCode}`,
           },
         ];
         const actionData = {
@@ -328,7 +324,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
             type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
           });
           if (chatBotRes.completion.toLowerCase() !== 'no') {
-            actionData.content = chatBotRes.completion;
+            actionData.content = `MAXI ${chatBotRes.completion}`;
             postAppDataAsync({
               data: actionData,
               type: APP_DATA_TYPES.BOT_COMMENT,
