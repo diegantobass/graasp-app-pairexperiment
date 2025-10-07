@@ -231,11 +231,9 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('HELLO');
-      const fullCode = `${value}`;
-      if (fullCode.trim() == '') {
-        return;
-      }
+      const footerCode = codeExecSettings[CodeExecutionSettingsKeys.FooterCode];
+      const fullCode = `${value}\n${footerCode}`;
+      console.log('scrolled');
       const prompt = [
         {
           role: ChatbotRole.System,
