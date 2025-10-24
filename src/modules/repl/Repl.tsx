@@ -227,6 +227,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
   useEffect(() => {
     const interval = setTimeout(() => {
       const fullCode = `${value}`;
+      messageContainerRef.current?.scrollTo({top: messageContainerRef.current?.scrollHeight});
 
       if (value.trim() !== '') {
         const autoPrompt = [
@@ -237,7 +238,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
         ];
         const actionData = {
           line: 0,
-          parent: null,
+          parent: "",
           codeId: INSTRUCTOR_CODE_ID,
           content: CHAT_BOT_ERROR_MESSAGE,
         };
@@ -247,7 +248,9 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
             type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
           });
           if (chatBotRes.completion.toLowerCase() !== 'no') {
+            console.log(comments[comments.length - 1].id);
             actionData.content = `AUTO ${chatBotRes.completion}`;
+            actionData.parent = comments[comments.length - 1].id;
             await postAppDataAsync({
               data: actionData,
               type: APP_DATA_TYPES.BOT_COMMENT,
@@ -314,18 +317,18 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
         ];
         const actionData = {
           line: 0,
-          parent: null,
+          parent: comments[comments.length - 1].id,
           codeId: INSTRUCTOR_CODE_ID,
           content: CHAT_BOT_ERROR_MESSAGE,
         };
-        postChatBot(prompt).then((chatBotRes) => {
+        postChatBot(prompt).then(async (chatBotRes) => {
           postAction({
             data: chatBotRes,
             type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
           });
           if (chatBotRes.completion.toLowerCase() !== 'no') {
             actionData.content = `MAXI ${chatBotRes.completion}`;
-            postAppDataAsync({
+            await postAppDataAsync({
               data: actionData,
               type: APP_DATA_TYPES.BOT_COMMENT,
             });
@@ -334,6 +337,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
               type: APP_ACTIONS_TYPES.CREATE_COMMENT,
             });
           }
+          messageContainerRef.current?.scrollTo({top: messageContainerRef.current?.scrollHeight});
         });
       }
     }
