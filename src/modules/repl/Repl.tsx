@@ -4,7 +4,7 @@ import { Alert, Box, Stack, styled } from '@mui/material';
 
 import { Api, TokenContext, useLocalContext } from '@graasp/apps-query-client';
 import { PyWorker, PyodideStatus } from '@graasp/pyodide';
-import { ChatbotRole } from '@graasp/sdk';
+import { ChatbotRole, GPTVersion } from '@graasp/sdk';
 import { useFullscreen } from '@graasp/ui/apps';
 
 import { CHAT_BOT_ERROR_MESSAGE, INSTRUCTOR_CODE_ID } from '@/config/constants';
@@ -57,6 +57,7 @@ type Props = {
 
 const Repl = ({ seedValue }: Props): JSX.Element => {
   const messageContainerRef = useRef<HTMLDivElement>(null);
+  // const { mutateAsync: postChatBot } = mutations.usePostChatBot(GPTVersion.GPT_5);
   const { mutateAsync: postChatBot } = mutations.usePostChatBot();
   const { postAppDataAsync, comments } = useAppDataContext();
   const [worker, setWorker] = useState<PyWorker | null>(null);
@@ -233,7 +234,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
         const autoPrompt = [
           {
             role: ChatbotRole.System,
-            content: `${chatbotPrompts?.[0].data.initialPrompt}\n\n ${fullCode}`,
+            content: `${comments}\n\n${chatbotPrompts?.[0].data.initialPrompt}\n\n ${fullCode}`,
           },
         ];
         const actionData = {
@@ -248,9 +249,11 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
             type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
           });
           if (chatBotRes.completion.toLowerCase() !== 'no') {
-            console.log(comments[comments.length - 1].id);
+            console.log(actionData);
             actionData.content = `AUTO ${chatBotRes.completion}`;
-            actionData.parent = comments[comments.length - 1].id;
+            if (Array.isArray(comments) && comments.length > 0 && comments[comments.length - 1]?.id) {
+              actionData.parent = comments[comments.length - 1].id;
+            }
             await postAppDataAsync({
               data: actionData,
               type: APP_DATA_TYPES.BOT_COMMENT,
@@ -309,15 +312,29 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
         // ADD CHATBOT PROMPTING HERE
         worker.run(fullCode);
         // post that code was run
+        const commentContents: string = Array.isArray(comments)
+          ? comments
+              .map((c) =>
+                c?.data && typeof c.data === 'object' && 'content' in c.data
+                  ? String((c as any).data.content)
+                  : '',
+              )
+              .filter(Boolean)
+              .join('\n')
+          : '';
+
+        //console.log(commentContents);
         const prompt = [
           {
             role: ChatbotRole.System,
-            content: `${chatbotPrompts?.[0].data.initialPrompt}\n\n ${fullCode}`,
+            content: `${commentContents}\n\n${chatbotPrompts?.[0].data.initialPrompt}\n\n ${fullCode}`,
           },
         ];
+        console.log(prompt);
         const actionData = {
           line: 0,
-          parent: comments[comments.length - 1].id,
+          // parent: comments[comments.length - 1].id,
+          parent: "",
           codeId: INSTRUCTOR_CODE_ID,
           content: CHAT_BOT_ERROR_MESSAGE,
         };
@@ -328,6 +345,10 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
           });
           if (chatBotRes.completion.toLowerCase() !== 'no') {
             actionData.content = `MAXI ${chatBotRes.completion}`;
+            // attach to last comment if available to keep thread
+            if (Array.isArray(comments) && comments.length > 0 && comments[comments.length - 1]?.id) {
+              actionData.parent = comments[comments.length - 1].id;
+            }
             await postAppDataAsync({
               data: actionData,
               type: APP_DATA_TYPES.BOT_COMMENT,
