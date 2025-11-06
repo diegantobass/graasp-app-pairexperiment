@@ -282,7 +282,7 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
               type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
             });
             if (chatBotRes.completion.toLowerCase() !== 'no') {
-              actionData.content = `AUTO ${chatBotRes.completion}`;
+              actionData.content = `${chatBotRes.completion}`;
 
               await postAppDataAsync({
                 data: actionData,
@@ -293,9 +293,11 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
                 type: APP_ACTIONS_TYPES.CREATE_COMMENT,
               });
             }
-            messageContainerRef.current?.scrollTo({
-              top: messageContainerRef.current?.scrollHeight,
-            });
+            setTimeout(() => {
+              messageContainerRef.current?.scrollTo({
+                top: messageContainerRef.current?.scrollHeight,
+              });
+            }, 1000);
           });
         }
       }
