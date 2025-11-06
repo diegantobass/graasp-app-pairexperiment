@@ -2,7 +2,13 @@ import { KeyboardEvent, useContext, useEffect, useRef, useState } from 'react';
 
 import { Alert, Box, Stack, styled } from '@mui/material';
 
-import { Api, TokenContext, useLocalContext } from '@graasp/apps-query-client';
+import {
+  Api,
+  ChatbotThreadMessage,
+  TokenContext,
+  buildPrompt,
+  useLocalContext,
+} from '@graasp/apps-query-client';
 import { PyWorker, PyodideStatus } from '@graasp/pyodide';
 import { ChatbotRole, GPTVersion } from '@graasp/sdk';
 import { useFullscreen } from '@graasp/ui/apps';
@@ -37,6 +43,9 @@ import CodeEditor from './CodeEditor';
 import NoobInput from './NoobInput';
 import OutputConsole from './OutputConsole';
 import ReplToolbar from './ReplToolbar';
+
+const AUTO_CHECK_TIMEOUT = 3 * 60_000;
+const DELAY_TO_LAST_COMMENT = 3 * 60_000;
 
 const OutlineWrapper = styled(Box)(({ theme }) =>
   theme.unstable_sx({
@@ -103,6 +112,21 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
   const [replStatus, setReplStatus] = useState<PyodideStatus>(
     PyodideStatus.LOADING_PYODIDE,
   );
+
+  const chatbotThread = comments
+    .slice()
+    .sort((messageA, messageB) => {
+      const createdAtA = new Date(messageA?.createdAt || 0).getTime();
+      const createdAtB = new Date(messageB?.createdAt || 0).getTime();
+
+      return createdAtA - createdAtB;
+    })
+    .map((comment) => ({
+      botDataType: APP_DATA_TYPES.BOT_COMMENT,
+      msgType: comment.type,
+      data: comment.data.content,
+      createdAt: comment.createdAt,
+    }));
 
   // register worker on mount
   useEffect(
@@ -226,53 +250,60 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
   );
 
   useEffect(() => {
-    const interval = setTimeout(() => {
-      const fullCode = `${value}`;
-      messageContainerRef.current?.scrollTo({top: messageContainerRef.current?.scrollHeight});
-
-      if (value.trim() !== '') {
-        const autoPrompt = [
-          {
-            role: ChatbotRole.System,
-            content: `${comments}\n\n${chatbotPrompts?.[0].data.initialPrompt}\n\n ${fullCode}`,
-          },
-        ];
-        const actionData = {
-          line: 0,
-          parent: "",
-          codeId: INSTRUCTOR_CODE_ID,
-          content: CHAT_BOT_ERROR_MESSAGE,
-        };
-        postChatBot(autoPrompt).then(async (chatBotRes) => {
-          postAction({
-            data: chatBotRes,
-            type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
-          });
-          if (chatBotRes.completion.toLowerCase() !== 'no') {
-            console.log(actionData);
-            actionData.content = `AUTO ${chatBotRes.completion}`;
-            if (Array.isArray(comments) && comments.length > 0 && comments[comments.length - 1]?.id) {
-              actionData.parent = comments[comments.length - 1].id;
-            }
-            await postAppDataAsync({
-              data: actionData,
-              type: APP_DATA_TYPES.BOT_COMMENT,
-            });
-            postAction({
-              data: actionData,
-              type: APP_ACTIONS_TYPES.CREATE_COMMENT,
-            });
-          }
-          messageContainerRef.current?.scrollTo({
-            top: messageContainerRef.current?.scrollHeight,
-          });
+    const interval = setInterval(() => {
+      console.log('checking chatbot thread');
+      // check last comment in thread and if it has been posted too long ago, say something.
+      if (
+        Date.parse(chatbotThread[chatbotThread.length - 1].createdAt) <
+        Date.now() - DELAY_TO_LAST_COMMENT
+      ) {
+        console.log('auto prompting');
+        const fullCode = `${value}`;
+        messageContainerRef.current?.scrollTo({
+          top: messageContainerRef.current?.scrollHeight,
         });
+
+        if (value.trim() !== '') {
+          const promptToSend = buildPrompt(
+            chatbotPrompts?.[0].data.initialPrompt,
+            chatbotThread,
+            `${fullCode}`,
+          );
+
+          const actionData = {
+            line: 0,
+            parent: '',
+            codeId: INSTRUCTOR_CODE_ID,
+            content: CHAT_BOT_ERROR_MESSAGE,
+          };
+          postChatBot(promptToSend).then(async (chatBotRes) => {
+            postAction({
+              data: chatBotRes,
+              type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
+            });
+            if (chatBotRes.completion.toLowerCase() !== 'no') {
+              actionData.content = `AUTO ${chatBotRes.completion}`;
+
+              await postAppDataAsync({
+                data: actionData,
+                type: APP_DATA_TYPES.BOT_COMMENT,
+              });
+              postAction({
+                data: actionData,
+                type: APP_ACTIONS_TYPES.CREATE_COMMENT,
+              });
+            }
+            messageContainerRef.current?.scrollTo({
+              top: messageContainerRef.current?.scrollHeight,
+            });
+          });
+        }
       }
-    }, 10000);
+    }, AUTO_CHECK_TIMEOUT);
     return () => {
-      clearTimeout(interval);
+      clearInterval(interval);
     };
-  }, [value]);
+  }, [value, comments]);
 
   // const onClickRunCode = (): void => {
   //   // to run the code:
@@ -311,42 +342,33 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
         setOutput('');
         // ADD CHATBOT PROMPTING HERE
         worker.run(fullCode);
-        // post that code was run
-        const commentContents: string = Array.isArray(comments)
-          ? comments
-              .map((c) =>
-                c?.data && typeof c.data === 'object' && 'content' in c.data
-                  ? String((c as any).data.content)
-                  : '',
-              )
-              .filter(Boolean)
-              .join('\n')
-          : '';
 
-        //console.log(commentContents);
-        const prompt = [
-          {
-            role: ChatbotRole.System,
-            content: `${commentContents}\n\n${chatbotPrompts?.[0].data.initialPrompt}\n\n ${fullCode}`,
-          },
-        ];
-        console.log(prompt);
+        const promptToSend = buildPrompt(
+          chatbotPrompts?.[0].data.initialPrompt,
+          chatbotThread,
+          `${fullCode}`,
+        );
+
         const actionData = {
           line: 0,
           // parent: comments[comments.length - 1].id,
-          parent: "",
+          parent: '',
           codeId: INSTRUCTOR_CODE_ID,
           content: CHAT_BOT_ERROR_MESSAGE,
         };
-        postChatBot(prompt).then(async (chatBotRes) => {
+        postChatBot(promptToSend).then(async (chatBotRes) => {
           postAction({
             data: chatBotRes,
             type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
           });
           if (chatBotRes.completion.toLowerCase() !== 'no') {
-            actionData.content = `MAXI ${chatBotRes.completion}`;
+            actionData.content = chatBotRes.completion;
             // attach to last comment if available to keep thread
-            if (Array.isArray(comments) && comments.length > 0 && comments[comments.length - 1]?.id) {
+            if (
+              Array.isArray(comments) &&
+              comments.length > 0 &&
+              comments[comments.length - 1]?.id
+            ) {
               actionData.parent = comments[comments.length - 1].id;
             }
             await postAppDataAsync({
@@ -358,7 +380,11 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
               type: APP_ACTIONS_TYPES.CREATE_COMMENT,
             });
           }
-          messageContainerRef.current?.scrollTo({top: messageContainerRef.current?.scrollHeight});
+          setTimeout(() => {
+            messageContainerRef.current?.scrollTo({
+              top: messageContainerRef.current?.scrollHeight,
+            });
+          }, 1000);
         });
       }
     }

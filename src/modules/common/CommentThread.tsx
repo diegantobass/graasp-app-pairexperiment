@@ -26,6 +26,7 @@ import {
   GeneralSettingsKeys,
 } from '../../interfaces/settings';
 import { useAppDataContext } from '../context/AppDataContext';
+import { useCodeContext } from '../context/CodeProvider';
 import { CommentProvider } from '../context/CommentContext';
 import { useReviewContext } from '../context/ReviewContext';
 import { useSettings } from '../context/SettingsContext';
@@ -34,7 +35,6 @@ import ResponseContainer from '../layout/ResponseContainer';
 import Comment from './Comment';
 import CommentEditor from './CommentEditor';
 import ResponseBox from './ResponseBox';
-import { useCodeContext } from '../context/CodeProvider';
 
 type Props = {
   children?: CommentType[];
@@ -86,13 +86,14 @@ const CommentThread = ({
     return null;
   }
 
-  const threads = children
-    .filter((c) => !c.data.parent)
-    .map((parent) => buildThread(parent, children))
-    .map((thread) => thread.slice()) // Create a shallow copy of each thread
-    .sort((threadA, threadB) => {
-      const createdAtA = new Date(threadA[0]?.createdAt || 0).getTime();
-      const createdAtB = new Date(threadB[0]?.createdAt || 0).getTime();
+  const thread = children
+    .slice()
+    // .filter((c) => !c.data.parent)
+    // .map((parent) => buildThread(parent, children))
+    // .map((thread) => thread.slice()) // Create a shallow copy of each thread
+    .sort((messageA, messageB) => {
+      const createdAtA = new Date(messageA?.createdAt || 0).getTime();
+      const createdAtB = new Date(messageB?.createdAt || 0).getTime();
 
       return createdAtA - createdAtB;
     });
@@ -106,135 +107,133 @@ const CommentThread = ({
   if (chatbotPrompts) {
     return (
       <>
-        {threads.map((thread) => (
-          <CommentContainer
-            data-cy={COMMENT_THREAD_CONTAINER_CYPRESS}
-            key={`comment-thread-${thread[0]?.id}`}
-          >
-            {thread.map((c, i, arr) => (
-              <Fragment key={c.id}>
-                <CommentProvider value={c}>
-                  {isEdited(c.id) ? (
-                    <CommentEditor
-                      maxTextLength={
-                        generalSettings[GeneralSettingsKeys.MaxCommentLength]
-                      }
-                      onCancel={() => {
-                        closeEditingComment();
-                      }}
-                      onSend={(content) => {
-                        patchAppData({
-                          id: c.id,
-                          data: {
-                            ...c.data,
-                            content,
-                          },
-                        });
-                        closeEditingComment();
-                      }}
-                      comment={c}
-                    />
-                  ) : (
-                    <Comment comment={c} />
-                  )}
-                </CommentProvider>
-                {
-                  // show input bar to respond to comment
-                  i + 1 === arr.length &&
-                    !isLoading &&
-                    !isEdited(c.id) &&
-                    !isReplied(c.id) &&
-                    allowedChatbotResponse(arr, i, c.type) && (
-                      <ResponseBox commentId={c.id} onClick={addResponse} />
-                    )
-                }
-                {i + 1 === arr.length && isLoading && (
-                  <ResponseContainer>
-                    <Stack spacing={2} direction="row" justifyContent="center">
-                      <Typography color="#666">{t('Loading')}</Typography>
-                      <CircularProgress sx={{ color: '#666' }} size="20px" />
-                    </Stack>
-                  </ResponseContainer>
-                )}
-                {
-                  // if input bar was clicked, a comment editor opens to compose a response
-                  isReplied(c.id) && (
-                    <CommentEditor
-                      onCancel={closeComment}
-                      onSend={(content) => {
-                        const data = {
+        {/*{threads.map((thread) => (*/}
+        <CommentContainer
+          data-cy={COMMENT_THREAD_CONTAINER_CYPRESS}
+          key="comment-thread"
+        >
+          {thread.map((c, i, arr) => (
+            <Fragment key={c.id}>
+              <CommentProvider value={c}>
+                {isEdited(c.id) ? (
+                  <CommentEditor
+                    maxTextLength={
+                      generalSettings[GeneralSettingsKeys.MaxCommentLength]
+                    }
+                    onCancel={() => {
+                      closeEditingComment();
+                    }}
+                    onSend={(content) => {
+                      patchAppData({
+                        id: c.id,
+                        data: {
                           ...c.data,
-                          parent: c.id,
                           content,
-                        };
-
-                        postAppDataAsync({
-                          data,
-                          type: APP_DATA_TYPES.COMMENT,
-                        })?.then((parent) => {
-                          // when in a chatbot thread, should also post to the api
-                          if (thread[0]?.type === APP_DATA_TYPES.BOT_COMMENT) {
-                            const { chatbotPromptSettingId } =
-                              thread[0]?.data ||
-                              DEFAULT_CHATBOT_PROMPT_APP_DATA;
-                            const promptSetting = chatbotPrompts.find(
-                              (a) => a.id === chatbotPromptSettingId,
-                            );
-
-                            const chatbotThread: ChatbotThreadMessage[] =
-                              thread.map((botThread) => ({
-                                botDataType: APP_DATA_TYPES.BOT_COMMENT,
-                                msgType: botThread.type,
-                                data: botThread.data.content,
-                              }));
-
-                            const prompt = buildPrompt(
-                              promptSetting?.data.initialPrompt,
-                              chatbotThread,
-                              `${content}${code}`,
-                            );
-
-                            const newData = {
-                              ...data,
-                              parent: parent?.id,
-                              content: CHAT_BOT_ERROR_MESSAGE,
-                            };
-
-                            postChatBot(prompt)
-                              .then((chatBotRes) => {
-                                newData.content = chatBotRes.completion;
-                              })
-                              .finally(() => {
-                                postAppDataAsync({
-                                  data: newData,
-                                  type: APP_DATA_TYPES.BOT_COMMENT,
-                                });
-                                postAction({
-                                  data: newData,
-                                  type: APP_ACTIONS_TYPES.CREATE_COMMENT,
-                                });
-                              });
-
-                            postAction({
-                              data: { prompt },
-                              type: APP_ACTIONS_TYPES.SEND_PROMPT,
-                            });
-                          }
-                        });
-                        postAction({
-                          data,
-                          type: APP_ACTIONS_TYPES.RESPOND_COMMENT,
-                        });
-                        closeComment();
-                      }}
-                      comment={copyWithEmptyContent(c)}
-                    />
+                        },
+                      });
+                      closeEditingComment();
+                    }}
+                    comment={c}
+                  />
+                ) : (
+                  <Comment comment={c} />
+                )}
+              </CommentProvider>
+              {
+                // show input bar to respond to comment
+                i + 1 === arr.length &&
+                  !isLoading &&
+                  !isEdited(c.id) &&
+                  !isReplied(c.id) &&
+                  allowedChatbotResponse(arr, i, c.type) && (
+                    <ResponseBox commentId={c.id} onClick={addResponse} />
                   )
-                }
-              </Fragment>
-            ))}
-          </CommentContainer>
-        ))}
+              }
+              {i + 1 === arr.length && isLoading && (
+                <ResponseContainer>
+                  <Stack spacing={2} direction="row" justifyContent="center">
+                    <Typography color="#666">{t('Loading')}</Typography>
+                    <CircularProgress sx={{ color: '#666' }} size="20px" />
+                  </Stack>
+                </ResponseContainer>
+              )}
+              {
+                // if input bar was clicked, a comment editor opens to compose a response
+                isReplied(c.id) && (
+                  <CommentEditor
+                    onCancel={closeComment}
+                    onSend={(content) => {
+                      const data = {
+                        ...c.data,
+                        parent: c.id,
+                        content,
+                      };
+
+                      postAppDataAsync({
+                        data,
+                        type: APP_DATA_TYPES.COMMENT,
+                      })?.then((parent) => {
+                        // when in a chatbot thread, should also post to the api
+                        if (thread[0]?.type === APP_DATA_TYPES.BOT_COMMENT) {
+                          const { chatbotPromptSettingId } =
+                            thread[0]?.data || DEFAULT_CHATBOT_PROMPT_APP_DATA;
+                          const promptSetting = chatbotPrompts.find(
+                            (a) => a.id === chatbotPromptSettingId,
+                          );
+
+                          const chatbotThread: ChatbotThreadMessage[] =
+                            thread.map((botThread) => ({
+                              botDataType: APP_DATA_TYPES.BOT_COMMENT,
+                              msgType: botThread.type,
+                              data: botThread.data.content,
+                            }));
+
+                          const prompt = buildPrompt(
+                            promptSetting?.data.initialPrompt,
+                            chatbotThread,
+                            `${content}${code}`,
+                          );
+
+                          const newData = {
+                            ...data,
+                            parent: parent?.id,
+                            content: CHAT_BOT_ERROR_MESSAGE,
+                          };
+
+                          postChatBot(prompt)
+                            .then((chatBotRes) => {
+                              newData.content = chatBotRes.completion;
+                            })
+                            .finally(() => {
+                              postAppDataAsync({
+                                data: newData,
+                                type: APP_DATA_TYPES.BOT_COMMENT,
+                              });
+                              postAction({
+                                data: newData,
+                                type: APP_ACTIONS_TYPES.CREATE_COMMENT,
+                              });
+                            });
+
+                          postAction({
+                            data: { prompt },
+                            type: APP_ACTIONS_TYPES.SEND_PROMPT,
+                          });
+                        }
+                      });
+                      postAction({
+                        data,
+                        type: APP_ACTIONS_TYPES.RESPOND_COMMENT,
+                      });
+                      closeComment();
+                    }}
+                    comment={copyWithEmptyContent(c)}
+                  />
+                )
+              }
+            </Fragment>
+          ))}
+        </CommentContainer>
       </>
     );
   }

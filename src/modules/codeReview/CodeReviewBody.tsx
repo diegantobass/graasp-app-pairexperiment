@@ -5,7 +5,7 @@ import { IconButton, styled } from '@mui/material';
 
 import { AppDataVisibility } from '@graasp/sdk';
 
-import groupBy from 'lodash.groupby';
+// import groupBy from 'lodash.groupby';
 import { Highlight, Language, themes } from 'prism-react-renderer';
 
 import { APP_ACTIONS_TYPES } from '../../config/appActionsTypes';
@@ -114,7 +114,7 @@ const CodeReviewBody = ({ isPreset = false }: Props): JSX.Element => {
   const viewComments = versionComments?.filter(
     (c) => (isPreset && c.type === APP_DATA_TYPES.TEACHER_COMMENT) || !isPreset,
   );
-  const groupedComments = groupBy(viewComments, (c) => c.data.line);
+  // const groupedComments = groupBy(viewComments, (c) => c.data.line);
 
   const handleClick = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
@@ -228,7 +228,7 @@ const CodeReviewBody = ({ isPreset = false }: Props): JSX.Element => {
               <LoadingIndicatorProvider>
                 <ChatbotPrompts line={i} />
                 <CommentThread hiddenState={lineHiddenState[i]}>
-                  {groupedComments[i]}
+                  {viewComments}
                 </CommentThread>
               </LoadingIndicatorProvider>
             </Fragment>
