@@ -281,18 +281,16 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
               data: chatBotRes,
               type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
             });
-            if (chatBotRes.completion.toLowerCase() !== 'no') {
-              actionData.content = `${chatBotRes.completion}`;
+            actionData.content = `${chatBotRes.completion}`;
 
-              await postAppDataAsync({
-                data: actionData,
-                type: APP_DATA_TYPES.BOT_COMMENT,
-              });
-              postAction({
-                data: actionData,
-                type: APP_ACTIONS_TYPES.CREATE_COMMENT,
-              });
-            }
+            await postAppDataAsync({
+              data: actionData,
+              type: APP_DATA_TYPES.BOT_COMMENT,
+            });
+            postAction({
+              data: actionData,
+              type: APP_ACTIONS_TYPES.CREATE_COMMENT,
+            });
             setTimeout(() => {
               messageContainerRef.current?.scrollTo({
                 top: messageContainerRef.current?.scrollHeight,
@@ -363,25 +361,23 @@ const Repl = ({ seedValue }: Props): JSX.Element => {
             data: chatBotRes,
             type: APP_ACTIONS_TYPES.BOT_RUNFEEDBACK,
           });
-          if (chatBotRes.completion.toLowerCase() !== 'no') {
-            actionData.content = chatBotRes.completion;
-            // attach to last comment if available to keep thread
-            if (
-              Array.isArray(comments) &&
-              comments.length > 0 &&
-              comments[comments.length - 1]?.id
-            ) {
-              actionData.parent = comments[comments.length - 1].id;
-            }
-            await postAppDataAsync({
-              data: actionData,
-              type: APP_DATA_TYPES.BOT_COMMENT,
-            });
-            postAction({
-              data: actionData,
-              type: APP_ACTIONS_TYPES.CREATE_COMMENT,
-            });
+          actionData.content = chatBotRes.completion;
+          // attach to last comment if available to keep thread
+          if (
+            Array.isArray(comments) &&
+            comments.length > 0 &&
+            comments[comments.length - 1]?.id
+          ) {
+            actionData.parent = comments[comments.length - 1].id;
           }
+          await postAppDataAsync({
+            data: actionData,
+            type: APP_DATA_TYPES.BOT_COMMENT,
+          });
+          postAction({
+            data: actionData,
+            type: APP_ACTIONS_TYPES.CREATE_COMMENT,
+          });
           setTimeout(() => {
             messageContainerRef.current?.scrollTo({
               top: messageContainerRef.current?.scrollHeight,
