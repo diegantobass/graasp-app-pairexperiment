@@ -68,17 +68,9 @@ const ReplToolbar: FC<Props> = ({
         justifyContent="space-between"
         width="50%"
       >
-        <ReplStatusIndicator status={status} />
+        {/* <ReplStatusIndicator status={status} /> */}
         <Stack direction="row" spacing={1} alignItems="center">
           {!savedStatus && <MiniAlert />}
-          <MiniButton
-            dataCy={REPL_SAVE_BUTTON_CY}
-            icon={<Save />}
-            onClick={onSaveCode}
-            disabled={savedStatus}
-            tooltip={t('Save Code')}
-            text={savedStatus ? t('Saved') : t('Save')}
-          />
           {/* <MiniButton
             dataCy={REPL_RUN_CODE_BUTTON_CY}
             isLoading={isLoading}
@@ -97,6 +89,15 @@ const ReplToolbar: FC<Props> = ({
             text="Run"
             tooltip="Code"
           />
+          <MiniButton
+            dataCy={REPL_STOP_BUTTON_CY}
+            color="error"
+            disabled={!isRunning}
+            icon={<Square />}
+            onClick={onStopCode}
+            text={t('Stop')}
+            tooltip={t('Stop Execution')}
+          />
         </Stack>
       </Stack>
       <Stack
@@ -105,32 +106,32 @@ const ReplToolbar: FC<Props> = ({
         spacing={1}
         width="50%"
       >
-        <MiniButton
-          dataCy={REPL_STOP_BUTTON_CY}
-          color="error"
-          disabled={!isRunning}
-          icon={<Square />}
-          onClick={onStopCode}
-          text={t('Stop')}
-          tooltip={t('Stop Execution')}
-        />
+          <MiniButton
+            dataCy={REPL_SAVE_BUTTON_CY}
+            icon={<Save />}
+            onClick={onSaveCode}
+            disabled={savedStatus}
+            tooltip={t('Save Code')}
+            text={savedStatus ? t('Saved') : t('Save')}
+          />
         <Stack direction="row" spacing={1} alignItems="center">
+
           <MiniButton
             dataCy={REPL_FULL_SCREEN_BUTTON_CY}
             color="primary"
             icon={isFullscreen ? <FullscreenExit /> : <Fullscreen />}
             onClick={onFullscreen}
             tooltip={t('Toggle Fullscreen')}
-            text=""
+            text="Fullscreen"
           />
-          <MiniButton
+          {/* <MiniButton
             dataCy={REPL_CLEAR_BUTTON_CY}
             color="error"
             icon={<BrushCleaningIcon />}
             onClick={onClearOutput}
             tooltip={t('Clear outputs and figures')}
             text={t('Clear')}
-          />
+          /> */}
         </Stack>
       </Stack>
     </Stack>
